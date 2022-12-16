@@ -4,14 +4,34 @@ from packet import *
 
 class EventType(Enum):
     INGRESS=0
+    EGRESS = 1
+
 
 
 class Event:
-    def __init__(self,timestamp:int, pkt:Packet, EventType ev_type):
-        self.ts = timestamp
+    def __init__(self,timestamp:int, pkt:Packet, ev_type:EventType):
+        self.timestamp = timestamp
         self.pkt = pkt
         self.ev_type = ev_type
 
+    # define proiority based on timestamp order
+    def __lt__(self, other: "Event"):
+        return self.timestamp < other.timestamp
+    
+    def __le__(self, other: "Event"):
+        return self.timestamp <= other.timestamp
+    
+    def __eq__(self, other: "Event"):
+        return self.timestamp == other.timestamp
+
+    def __ne__(self, other: "Event"):
+        return self.timestamp != other.timestamp
+
+    def __gt__(self, other: "Event"):
+        return self.timestamp > other.timestamp
+    
+    def __ge__(self, other: "Event"):
+        return self.timestamp >= other.timestamp
 
 class PriorityQueue: 
     def __init__(self):
@@ -38,18 +58,18 @@ class EventSimulator:
         return f'EventQueue with length {self.priority_queue.qsize()}'
     
     def register(self, event: Event):
-        if event.request is not None:
-            event.request.timestamps.append(self.timestamp)
+        if event.pkt is not None:
+            event.pkt.timestamps.append(self.timestamp)
         self.priority_queue.put(event)
 
-    def get(self) -> Optional[Event]:
+    def get(self):
         if self.priority_queue.qsize() == 0:
             return None
-        r: Event = self.priority_queue.get()
-        self.timestamp = max(self.timestamp, r.timestamp)
-        if r.request is not None:
-            r.request.timestamps.append(self.timestamp)
-        return r
+        ev = self.priority_queue.get()
+        self.timestamp = max(self.timestamp, ev.timestamp)
+        if ev.pkt is not None:
+            ev.pkt.timestamps.append(self.timestamp)
+        return ev
 
     def qsize(self) -> int:
         return self.priority_queue.qsize()
