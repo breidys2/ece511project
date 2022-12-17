@@ -10,9 +10,10 @@ random.seed(42)
 #Using zipf to simulate real workloads based on FB SIGCOMM '15 Paper
 def gen_pkt_mem_address(n_entries:int):
     n_entries = int(n_entries)
+    #Normal case (zipfian)
     #v = zipf(1.1, n_entries)
+    #Worst case (uniform)
     v = uniform(high=n_entries, size=n_entries).astype(int)
-    print(v[0])
     return v
 
     #For now uniform (worst case)
@@ -22,7 +23,7 @@ def gen_pkt_mem_address(n_entries:int):
 
 def print_percs_str(in_list, header="", percs=[0.5,0.9,0.95,0.99]):
     if len(in_list) == 0:
-        return ""
+        return headers + ": N/A"
     in_list = sorted(in_list)
     out_str = str(header) + "\n"
     ll = len(in_list)
@@ -49,7 +50,9 @@ def main():
     #We are simulating stage 1 of 12 stages
     rem_stage_cycle = 11
     n_pkts = int(sram_sz * 4)
-    warmup = int(0.4 * n_pkts)
+    #n_pkts = 200
+            
+    warmup = int(0.0 * n_pkts)
 
     addresses = gen_pkt_mem_address(rldram_entries)
 
@@ -61,7 +64,7 @@ def main():
     for pkt in packets:
         input_ports[pkt.inp_port].append(pkt)
 
-    print("Done creating packets")
+    print("Done creating packets " + str(len(packets)))
 
     #print("Qsizes: ")
     #for i in range(n_ports + 1):
@@ -80,12 +83,14 @@ def main():
     #RUN SIM
     while sim.qsize() > 0:
         cur_ev = sim.get()
+        if cur_ev.pkt.recirc > 1000:
+            raise ValueError(cur_ev.pkt.recirc)
 
         if cur_ev.ev_type == EventType.INGRESS:
             #Grab the next packet from ingress
             cur_pkt = cur_ev.pkt
             #Check SRAM if the packet can be forwarded
-            hit, wb = stage_sram.access(pkt.address, pkt.rw)
+            hit, wb = stage_sram.access(cur_pkt.address, cur_pkt.rw)
             #if random.random() < 0.5:
             if hit:
                 sim.register(Event(cur_ev.timestamp + rem_stage_cycle,cur_pkt,EventType.EGRESS))
