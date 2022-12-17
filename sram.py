@@ -11,7 +11,13 @@ class SRAM:
         self.valid_arr  = np.zeros(shape=(ways, num_sets), dtype=bool)
         self.dirty_arr  = np.zeros(shape=(ways, num_sets), dtype=bool)
         # History-LRU, currently only valid for 2-ways
-        self.hLRU_arr   = np.zeros(shape=(num_sets), dtype=int)
+        if ways == 2:
+            self.hLRU_arr   = np.zeros(shape=(num_sets), dtype=int)
+        elif ways == 4:
+            self.hLRU_arr   = np.zeros(shape=(3 * num_sets), dtype=int)
+        else:
+            print("Currently, only 2 and 4 way set associativity supported")
+            exit()
     
     # Find if tag is present, and return corresponding way_addr if so
     # Does NOT check if tag is valid (maybe it makes more sense to do so here?)
@@ -98,13 +104,23 @@ class SRAM:
             elif way_addr == 1: 
                 self.hLRU_arr[set_addr] = min(4, self.hLRU_arr[set_addr] + 1)
         
-        # elif self.num_ways == 4:
-        #     if way_addr == 0:
-        #         # set_addr - 1 is left child counter, set_addr is parent counter
-        #         self.hLRU_arr[set_addr - 1] = max(-3, self.hLRU[set_addr - 1] - 1)
-        #         self.hLRU_arr[set_addr] = max(-3, self.hLRU[set_addr - 1] - 1)
-        #     elif way_addr == 1:
-        #         self.hLRU_arr[set_addr - 1] = max(-3, self.hLRU[set_addr - 1] - 1)
+        # Done in a hacky-way, don't take inspiration from this code
+        elif self.num_ways == 4:
+            set_addr = 3 * set_addr
+            if way_addr <= 1:
+                # set_addr + 1 is left child counter, set_addr is parent counter
+                self.hLRU_arr[set_addr] = max(-3, self.hLRU_arr[set_addr] - 1)
+                if way_addr == 0:
+                    self.hLRU_arr[set_addr + 1] = max(-3, self.hLRU_arr[set_addr + 1] - 1)
+                else:
+                    self.hLRU_arr[set_addr + 1] = min(4, self.hLRU_arr[set_addr + 1] + 1)
+            else:
+                # set_addr + 2 is right child counter, set_addr is parent counter
+                self.hLRU_arr[set_addr] = max(-3, self.hLRU_arr[set_addr] + 1)
+                if way_addr == 2:
+                    self.hLRU_arr[set_addr + 2] = max(-3, self.hLRU_arr[set_addr + 2] - 1)
+                else:
+                    self.hLRU_arr[set_addr + 2] = min(4, self.hLRU_arr[set_addr + 2] + 1)
         return 0
 
     def decide_hLRU(self, set_addr):
@@ -113,5 +129,17 @@ class SRAM:
                 way_addr = 1
             else:
                 way_addr = 0
-
+        elif self.num_ways == 4:
+            set_addr = 3 * set_addr
+            if self.hLRU_arr[set_addr] <= 0:
+                # way 0,1 hot, replace 2,3
+                if self.hLRU_arr[set_addr + 1] <= 0:
+                    way_addr = 3
+                else:
+                    way_addr = 2
+            else:
+                if self.hLRU_arr[set_addr + 2] <= 0:
+                    way_addr = 1
+                else:
+                    way_addr = 0
         return way_addr
