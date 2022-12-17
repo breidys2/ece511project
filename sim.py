@@ -5,15 +5,16 @@ import random
 from numpy.random import zipf
 from numpy.random import uniform
 random.seed(42)
+np.random.seed(42)
 
 
 #Using zipf to simulate real workloads based on FB SIGCOMM '15 Paper
 def gen_pkt_mem_address(n_entries:int):
     n_entries = int(n_entries)
     #Normal case (zipfian)
-    #v = zipf(1.1, n_entries)
+    v = zipf(1.3, n_entries)
     #Worst case (uniform)
-    v = uniform(high=n_entries, size=n_entries).astype(int)
+    #v = uniform(high=n_entries, size=n_entries).astype(int)
     return v
 
     #For now uniform (worst case)
@@ -52,7 +53,7 @@ def main():
     n_pkts = int(sram_sz * 4)
     #n_pkts = 200
             
-    warmup = int(0.0 * n_pkts)
+    warmup = int(0.25 * n_pkts)
 
     addresses = gen_pkt_mem_address(rldram_entries)
 
@@ -73,7 +74,7 @@ def main():
     #Create simulator
     sim = EventSimulator()
 
-    stage_sram = SRAM(sram_entries, 2)
+    stage_sram = SRAM(sram_entries, 4)
 
     #Will feed packets at line rate, RR through the ports
     sim.register(Event(1, input_ports[0].pop(), EventType.INGRESS))
@@ -81,9 +82,11 @@ def main():
     cur_inp_port = 1
 
     #RUN SIM
+    cur_pkts = 1
+    start_time = -1
     while sim.qsize() > 0:
         cur_ev = sim.get()
-        if cur_ev.pkt.recirc > 1000:
+        if cur_ev.pkt.recirc > 100:
             raise ValueError(cur_ev.pkt.recirc)
 
         if cur_ev.ev_type == EventType.INGRESS:
@@ -91,9 +94,6 @@ def main():
             cur_pkt = cur_ev.pkt
             #Check SRAM if the packet can be forwarded
             hit, wb = stage_sram.access(cur_pkt.address, cur_pkt.rw)
-            if cur_pkt.recirc > 0 and not hit:
-                print(f"{cur_pkt.address} miss #{cur_pkt.recirc+1}")
-            #if random.random() < 0.5:
             if hit:
                 sim.register(Event(cur_ev.timestamp + rem_stage_cycle,cur_pkt,EventType.EGRESS))
             else:
@@ -115,6 +115,9 @@ def main():
                     if len(input_ports[test_port]) > 0:
                         sim.register(Event(cur_ev.timestamp + 1, input_ports[test_port].pop(), EventType.INGRESS))
                         cur_inp_port = (test_port + 1) % n_ports
+                        cur_pkts += 1
+                        if cur_pkts == warmup:
+                            start_time = sim.timestamp
                         break
         elif cur_ev.ev_type == EventType.EGRESS:
             #Just need this for the timestamping
@@ -128,7 +131,7 @@ def main():
 
     #At the end of the sim, want to collect output stats
     #First print throughput numbers
-    tput = n_pkts/sim.timestamp
+    tput = (n_pkts-warmup)/(sim.timestamp-start_time)
     print(f"Throughput: Forwarded {n_pkts} packets in {sim.timestamp} cycles for: {tput}")
 
     #Next, print latencies
@@ -139,12 +142,12 @@ def main():
         latencies.append(pkt.timestamps[-1] - pkt.timestamps[0])
         if pkt.recirc > 0:
             n_recirc += 1
-            recircs.append(pkt.recirc)
+        recircs.append(pkt.recirc)
 
     print(f"pkt recirculated: {n_recirc}")
     print(print_percs_str(latencies, "Latencies",
         percs=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.95,0.99]))
-    print(print_percs_str(recircs, "Recircs",
+    print(print_percs_str(recircs, "Recirculations",
         percs=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.95,0.99]))
 
 if __name__ == "__main__":
