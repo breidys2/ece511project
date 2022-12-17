@@ -16,8 +16,8 @@ class SRAM:
     def find_tag(self, addr, set_addr, set_tag):
         way_addr    = -1
 
-        if set_tag in self.tag_arr[:, set_addr]:
-            way_addr = int(np.where(self.tag_arr[:, set_addr]==set_tag)[0])
+        if set_tag in self.tag_arr[:, set_addr] and True in self.valid_arr[:, set_addr]:
+            way_addr = np.where(self.tag_arr[:, set_addr] == set_tag)[0][0]
             
             if self.valid_arr[way_addr, set_addr] == True:
                 if way_addr == 0:
