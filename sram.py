@@ -1,5 +1,9 @@
 import numpy as np
 
+SAT_COUNTER_BITS = 3
+SC_MIN = -(2**SAT_COUNTER_BITS)
+SC_MAX = 2**SAT_COUNTER_BITS - 1
+
 class SRAM:
     def __init__(self, size, ways):
         num_sets = int(np.ceil(size/ways))
@@ -100,27 +104,33 @@ class SRAM:
     def update_hLRU(self, way_addr, set_addr):
         if self.num_ways == 2:
             if way_addr == 0:
-                self.hLRU_arr[set_addr] = max(-3, self.hLRU_arr[set_addr] - 1)
+                self.hLRU_arr[set_addr] = max(SC_MIN, self.hLRU_arr[set_addr] - 1)
             elif way_addr == 1: 
-                self.hLRU_arr[set_addr] = min(4, self.hLRU_arr[set_addr] + 1)
+                self.hLRU_arr[set_addr] = min(SC_MAX, self.hLRU_arr[set_addr] + 1)
         
         # Done in a hacky-way, don't take inspiration from this code
         elif self.num_ways == 4:
             set_addr = 3 * set_addr
             if way_addr <= 1:
                 # set_addr + 1 is left child counter, set_addr is parent counter
-                self.hLRU_arr[set_addr] = max(-3, self.hLRU_arr[set_addr] - 1)
+                self.hLRU_arr[set_addr] = max(SC_MIN, self.hLRU_arr[set_addr] - 1)
                 if way_addr == 0:
-                    self.hLRU_arr[set_addr + 1] = max(-3, self.hLRU_arr[set_addr + 1] - 1)
+                    self.hLRU_arr[set_addr + 1] = max(SC_MIN, self.hLRU_arr[set_addr + 1] - 1)
+                elif way_addr == 1:
+                    self.hLRU_arr[set_addr + 1] = min(SC_MAX, self.hLRU_arr[set_addr + 1] + 1)
                 else:
-                    self.hLRU_arr[set_addr + 1] = min(4, self.hLRU_arr[set_addr + 1] + 1)
+                    print("bug")
+                    exit()
             else:
                 # set_addr + 2 is right child counter, set_addr is parent counter
-                self.hLRU_arr[set_addr] = max(-3, self.hLRU_arr[set_addr] + 1)
+                self.hLRU_arr[set_addr] = max(SC_MIN, self.hLRU_arr[set_addr] + 1)
                 if way_addr == 2:
-                    self.hLRU_arr[set_addr + 2] = max(-3, self.hLRU_arr[set_addr + 2] - 1)
+                    self.hLRU_arr[set_addr + 2] = max(SC_MIN, self.hLRU_arr[set_addr + 2] - 1)
+                elif way_addr == 3:
+                    self.hLRU_arr[set_addr + 2] = min(SC_MAX, self.hLRU_arr[set_addr + 2] + 1)
                 else:
-                    self.hLRU_arr[set_addr + 2] = min(4, self.hLRU_arr[set_addr + 2] + 1)
+                    print("bug")
+                    exit()
         return 0
 
     def decide_hLRU(self, set_addr):
