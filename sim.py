@@ -56,9 +56,10 @@ def main():
         input_ports[pkt.inp_port].append(pkt)
 
     
-    print("Qsizes: ")
-    for i in range(n_ports + 1):
-        print(str(i) + " " + str(len(input_ports[i])))
+    #print("Qsizes: ")
+    #for i in range(n_ports + 1):
+        #print(str(i) + " " + str(len(input_ports[i])))
+
     #Create simulator
     sim = EventSimulator()
 
@@ -78,7 +79,7 @@ def main():
             cur_pkt = cur_ev.pkt
             #Check SRAM if the packet can be forwarded
             #TODO integrate with andrew
-            hit, wb = stage_sram.access(pkt.address):
+            hit, wb = stage_sram.access(pkt.address, pkt.rw):
             #if random.random() < 0.5:
             if hit:
                 sim.register(Event(cur_ev.timestamp + rem_stage_cycle,cur_pkt,EventType.EGRESS))
