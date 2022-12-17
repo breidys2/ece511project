@@ -91,6 +91,8 @@ def main():
             cur_pkt = cur_ev.pkt
             #Check SRAM if the packet can be forwarded
             hit, wb = stage_sram.access(cur_pkt.address, cur_pkt.rw)
+            if cur_pkt.recirc > 0 and not hit:
+                print(f"{cur_pkt.address} miss #{cur_pkt.recirc+1}")
             #if random.random() < 0.5:
             if hit:
                 sim.register(Event(cur_ev.timestamp + rem_stage_cycle,cur_pkt,EventType.EGRESS))
