@@ -37,7 +37,7 @@ def print_percs_str(in_list, header="", percs=[0.5,0.9,0.95,0.99]):
 
 
 def main():
-    #Normalizing to increase sim speed
+    #Normalizing to increase sim speed, since numbers are normalized, makes no difference
     norm = 10
     #By default we have 16 external ports, one recirculation port, and one cpu port (ignored here)
     n_ports = 16
@@ -50,7 +50,7 @@ def main():
     recirc_port = 16
     #We are simulating stage 1 of 12 stages
     rem_stage_cycle = 11
-    n_pkts = int(sram_sz * 4)
+    n_pkts = int(sram_sz * 8)
     #n_pkts = 200
             
     warmup = int(0.25 * n_pkts)
@@ -74,7 +74,7 @@ def main():
     #Create simulator
     sim = EventSimulator()
 
-    stage_sram = SRAM(sram_entries, 4)
+    stage_sram = SRAM(sram_entries, 2)
 
     #Will feed packets at line rate, RR through the ports
     sim.register(Event(1, input_ports[0].pop(), EventType.INGRESS))
