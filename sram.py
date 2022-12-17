@@ -1,7 +1,7 @@
 import numpy as np
 
 class SRAM:
-    def __init__(self, size, ways, hLRU_size):
+    def __init__(self, size, ways):
         num_sets = int(np.ceil(size/ways))
 
         self.size       = size
@@ -11,7 +11,6 @@ class SRAM:
         self.valid_arr  = np.zeros(shape=(ways, num_sets), dtype=bool)
         self.dirty_arr  = np.zeros(shape=(ways, num_sets), dtype=bool)
         # History-LRU, currently only valid for 2-ways
-        self.hLRU_size  = hLRU_size
         self.hLRU_arr   = np.zeros(shape=(num_sets), dtype=int)
     
     # Find if tag is present, and return corresponding way_addr if so
@@ -93,13 +92,13 @@ class SRAM:
     # Helper function to handle updating historyLRU data structures
     # (simple counter for 2-way set assoc, 3 counters in btree for 4-way set assoc)
     def update_hLRU(self, way_addr, set_addr):
-        if self.hLRU_size == 2:
+        if self.num_ways == 2:
             if way_addr == 0:
                 self.hLRU_arr[set_addr] = max(-3, self.hLRU_arr[set_addr] - 1)
             elif way_addr == 1: 
                 self.hLRU_arr[set_addr] = min(4, self.hLRU_arr[set_addr] + 1)
         
-        # elif self.hLRU_size == 4:
+        # elif self.num_ways == 4:
         #     if way_addr == 0:
         #         # set_addr - 1 is left child counter, set_addr is parent counter
         #         self.hLRU_arr[set_addr - 1] = max(-3, self.hLRU[set_addr - 1] - 1)
@@ -109,7 +108,7 @@ class SRAM:
         return 0
 
     def decide_hLRU(self, set_addr):
-        if self.hLRU_size == 2:
+        if self.num_ways == 2:
             if self.hLRU_arr[set_addr] <= 0:
                 way_addr = 1
             else:
