@@ -5,6 +5,7 @@ from packet import *
 class EventType(Enum):
     INGRESS=0
     EGRESS = 1
+    RECIRC = 2
 
 
 
