@@ -1,14 +1,18 @@
 from packet import *
 from event import *
-#from SRAM import *
+from sram import *
 import random
 from numpy.random import zipf
+from numpy.random import uniform
 random.seed(42)
 
 
 #Using zipf to simulate real workloads based on FB SIGCOMM '15 Paper
 def gen_pkt_mem_address(n_entries:int):
-    v = zipf(1.1, 100000) 
+    n_entries = int(n_entries)
+    #v = zipf(1.1, n_entries)
+    v = uniform(high=n_entries, size=n_entries).astype(int)
+    print(v[0])
     return v
 
     #For now uniform (worst case)
@@ -31,19 +35,21 @@ def print_percs_str(in_list, header="", percs=[0.5,0.9,0.95,0.99]):
 
 
 def main():
+    #Normalizing to increase sim speed
+    norm = 10
     #By default we have 16 external ports, one recirculation port, and one cpu port (ignored here)
     n_ports = 16
-    n_pkts = 1000
-    warmup = int(0.4 * n_pkts)
-    #We are simulating stage 1 of 12 stages
-    rem_stage_cycle = 11
-    sram_sz = 1310720
+    sram_sz = int(1310720//norm)
     #SRAM entries are 128 bits wide (16 bytes)
-    sram_entries = sram_sz/16
-    rldram_sz = 301989888    
-    rldram_entries = rldram_sz/16    
+    sram_entries = int(sram_sz//16)
+    rldram_sz = int(301989888//norm)    
+    rldram_entries = int(rldram_sz//16)   
     rldram_lat = 10
     recirc_port = 16
+    #We are simulating stage 1 of 12 stages
+    rem_stage_cycle = 11
+    n_pkts = int(sram_sz * 4)
+    warmup = int(0.4 * n_pkts)
 
     addresses = gen_pkt_mem_address(rldram_entries)
 
@@ -55,7 +61,8 @@ def main():
     for pkt in packets:
         input_ports[pkt.inp_port].append(pkt)
 
-    
+    print("Done creating packets")
+
     #print("Qsizes: ")
     #for i in range(n_ports + 1):
         #print(str(i) + " " + str(len(input_ports[i])))
@@ -78,8 +85,7 @@ def main():
             #Grab the next packet from ingress
             cur_pkt = cur_ev.pkt
             #Check SRAM if the packet can be forwarded
-            #TODO integrate with andrew
-            hit, wb = stage_sram.access(pkt.address, pkt.rw):
+            hit, wb = stage_sram.access(pkt.address, pkt.rw)
             #if random.random() < 0.5:
             if hit:
                 sim.register(Event(cur_ev.timestamp + rem_stage_cycle,cur_pkt,EventType.EGRESS))
