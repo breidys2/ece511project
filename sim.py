@@ -8,18 +8,10 @@ random.seed(42)
 
 #Using zipf to simulate real workloads based on FB SIGCOMM '15 Paper
 def gen_pkt_mem_address(n_entries:int):
-    #For now uniform (worst case)
     v = zipf(1.1, 100000) 
     return v
-    #test = [0 for _ in range(int(n_entries))]
-    #for vv in v:
-    #    vvv  = int(vv)
-    #    print(vvv)
-    #    print(n_entries)
-    #    if vvv >= 0 and vvv < int(n_entries):
-    #        test[vvv]+=1
-    #print(test[0:100])
 
+    #For now uniform (worst case)
     #return int(random.random() * n_entries)
 
 
@@ -39,7 +31,6 @@ def print_percs_str(in_list, header="", percs=[0.5,0.9,0.95,0.99]):
 
 
 def main():
-
     #By default we have 16 external ports, one recirculation port, and one cpu port (ignored here)
     n_ports = 16
     n_pkts = 1000
@@ -57,7 +48,7 @@ def main():
     addresses = gen_pkt_mem_address(rldram_entries)
 
     #Generate a number of packets and assign them to input ports
-    packets = [Packet(int(random.random() * n_ports),addresses[i]) for i in range(n_pkts)]
+    packets = [Packet(int(random.random() * n_ports),addresses[i], 1 if random.random() < 0.1 else 0) for i in range(n_pkts)]
 
     #Generate simulator events to ingress the pkts into the queues
     input_ports = [[] for _ in range(n_ports + 1)]
@@ -71,8 +62,7 @@ def main():
     #Create simulator
     sim = EventSimulator()
 
-    #TODO integrate with andrew
-    #stage_sram = SRAM(sram_entries)
+    stage_sram = SRAM(sram_entries, 2)
 
     #Will feed packets at line rate, RR through the ports
     sim.register(Event(1, input_ports[0].pop(), EventType.INGRESS))
@@ -88,20 +78,17 @@ def main():
             cur_pkt = cur_ev.pkt
             #Check SRAM if the packet can be forwarded
             #TODO integrate with andrew
-            #if stage_sram.check(pkt.address):
-            if random.random() < 0.5:
+            hit, wb = stage_sram.access(pkt.address):
+            #if random.random() < 0.5:
+            if hit:
                 sim.register(Event(cur_ev.timestamp + rem_stage_cycle,cur_pkt,EventType.EGRESS))
             else:
                 #Check for eviction in the cache
-                #If need to first writeback
-                #TODO
                 cur_ev.pkt.recirc += 1
-                if True:
+                if not wb:
                     sim.register(Event(cur_ev.timestamp + rldram_lat, cur_ev.pkt, EventType.RECIRC))
                 else:
                     sim.register(Event(cur_ev.timestamp + 2*rldram_lat, cur_ev.pkt, EventType.RECIRC))
-
-
 
             #Create the next ingress event next cycle
             #First checking recirc port
