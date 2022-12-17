@@ -50,6 +50,7 @@ def main():
     recirc_port = 16
     #We are simulating stage 1 of 12 stages
     rem_stage_cycle = 11
+    tea_stage_cycle = 1500
     n_pkts = int(sram_sz * 8)
     #n_pkts = 200
             
@@ -136,16 +137,26 @@ def main():
 
     #Next, print latencies
     latencies = []
+    tea_latencies = []
     recircs = []
     n_recirc = 0 
+    recircs_in_sram = 0
     for pkt in packets[warmup:]:
         latencies.append(pkt.timestamps[-1] - pkt.timestamps[0])
         if pkt.recirc > 0:
+            tea_latencies.append(pkt.timestamps[-1] - pkt.timestamps[0] + pkt.recirc * tea_stage_cycle)
             n_recirc += 1
+            if pkt.address < sram_entries:
+                recircs_in_sram += 1
+        else:
+            tea_latencies.append(pkt.timestamps[-1] - pkt.timestamps[0])
         recircs.append(pkt.recirc)
 
     print(f"pkt recirculated: {n_recirc}")
+    print(f"sram recirculated: {recircs_in_sram/n_recirc*100}%")
     print(print_percs_str(latencies, "Latencies",
+        percs=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.95,0.99]))
+    print(print_percs_str(tea_latencies, "TEA Latencies",
         percs=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.95,0.99]))
     print(print_percs_str(recircs, "Recirculations",
         percs=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.95,0.99]))
